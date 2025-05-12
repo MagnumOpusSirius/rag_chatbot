@@ -1,0 +1,7 @@
+pdf_dir: "data/raw_pdfs"
+chunk_size: 500
+chunk_overlap: 50
+embedding_model: "all-MiniLM-L6-v2"
+vector_store: "pinecone"
+top_k: 4
+openai_model: "gpt-4"

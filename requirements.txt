@@ -1,0 +1,8 @@
+openai
+langchain
+pdfplumber
+pinecone
+sentence-transformers
+streamlit
+python-dotenv
+tqdm

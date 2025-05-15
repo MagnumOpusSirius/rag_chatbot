@@ -1,11 +1,11 @@
 import os
-import openai
+from openai import OpenAI
 from dotenv import load_dotenv
 from pinecone import Pinecone
 
 # Load env
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+#openai.api_key = os.getenv("OPENAI_API_KEY")
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
 
 # Config
@@ -17,17 +17,27 @@ llm_model = "gpt-4"
 
 index = pc.Index(index_name)
 
+client = OpenAI()
 def get_query_embedding(query: str):
-    response = openai.Embedding.create(
+    response = client.embeddings.create(
         input=[query],
         model=embedding_model
     )
-    return response['data'][0]['embedding']
+    return response.data[0].embedding
 
-def retrieve_relevant_chunks(query: str):
+def retrieve_relevant_chunks(query, top_k=5):
     query_vector = get_query_embedding(query)
-    result = index.query(vector=query_vector, top_k=top_k, include_metadata=True, namespace=namespace)
-    return result['matches']
+
+    index = pc.Index(index_name)
+    results = index.query(vector=query_vector, top_k=top_k, include_metadata=True, namespace=namespace)
+
+    print("\n[DEBUG] Retrieved Chunks:")
+    for match in results.matches:
+        print(f"Score: {match.score:.4f}\nContent: {match.metadata.get('text', '')[:300]}...\n---")
+
+    chunks = [match.metadata['text'] for match in results.matches if match.score > 0.75]
+
+    return chunks
 
 def build_prompt(user_query: str, retrieved_chunks: list):
     context_blocks = []
@@ -48,7 +58,7 @@ Answer the question strictly based on the context above. If the answer is not fo
 """
 
 def generate_answer(prompt: str):
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model=llm_model,
         messages=[
             {"role": "system", "content": "You are a helpful assistant answering based on technical user documentation."},
@@ -56,7 +66,7 @@ def generate_answer(prompt: str):
         ],
         temperature=0.2
     )
-    return response['choices'][0]['message']['content']
+    return response.choices[0].message.content
 
 def rag_chat_response(user_query: str):
     chunks = retrieve_relevant_chunks(user_query)

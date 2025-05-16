@@ -33,28 +33,38 @@ def retrieve_relevant_chunks(query, top_k=5):
 
     print("\n[DEBUG] Retrieved Chunks:")
     for match in results.matches:
-        print(f"Score: {match.score:.4f}\nContent: {match.metadata.get('text', '')[:300]}...\n---")
+        print(f"Score: {match.score:.4f}\nContent: {match.metadata.get('content', '')[:300]}...\n---")
 
-    chunks = [match.metadata['text'] for match in results.matches if match.score > 0.75]
+    chunks = [match.metadata for match in results.matches]
 
     return chunks
 
-def build_prompt(user_query: str, retrieved_chunks: list):
+
+chat_history = []
+
+def build_prompt(user_query: str, retrieved_chunks: list, history: list):
     context_blocks = []
     for chunk in retrieved_chunks:
-        section = chunk['metadata'].get('section', 'Unknown section')
-        content = chunk['metadata'].get('content', '')
-        context_blocks.append(f"{section}\n{content}")
+        section = chunk.get('section', 'Unknown section')
+        content = chunk.get('content', '')
+        context_blocks.append(f"From '{chunk.get('filename', '')}', page {chunk.get('page', '?')}:\nSection: {section}\n\n{content}")
     context_text = "\n\n---\n\n".join(context_blocks)
-
+    
+    history_text = ""
+    for turn in history:
+        history_text += f"User: {turn['user']}\nAssistant: {turn['assistant']}\n\n"
+        
     return f"""You are a helpful assistant that answers based only on the user manual content provided below.
 
-User Question: {user_query}
+Chat History:
+{history_text}
 
 Relevant Context:
 {context_text}
 
-Answer the question strictly based on the context above. If the answer is not found, respond with 'I couldn’t find the relevant information.'.
+User Question: {user_query}
+
+Answer the question mostly based on the context above. Even if the documentation does not provide a specific definition or explanation still provide closer results. If the answer is not really found, respond with 'I couldn’t find the relevant information.'.
 """
 
 def generate_answer(prompt: str):
@@ -70,5 +80,7 @@ def generate_answer(prompt: str):
 
 def rag_chat_response(user_query: str):
     chunks = retrieve_relevant_chunks(user_query)
-    prompt = build_prompt(user_query, chunks)
-    return generate_answer(prompt)
+    prompt = build_prompt(user_query, chunks, chat_history)
+    answer = generate_answer(prompt)
+    chat_history.append({"user": user_query, "assistant": answer})
+    return answer

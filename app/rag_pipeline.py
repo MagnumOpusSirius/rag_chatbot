@@ -31,9 +31,9 @@ def retrieve_relevant_chunks(query, top_k=5):
     index = pc.Index(index_name)
     results = index.query(vector=query_vector, top_k=top_k, include_metadata=True, namespace=namespace)
 
-    print("\n[DEBUG] Retrieved Chunks:")
-    for match in results.matches:
-        print(f"Score: {match.score:.4f}\nContent: {match.metadata.get('content', '')[:300]}...\n---")
+    #print("\n[DEBUG] Retrieved Chunks:")
+    #for match in results.matches:
+    #    print(f"Score: {match.score:.4f}\nContent: {match.metadata.get('content', '')[:300]}...\n---")
 
     chunks = [match.metadata for match in results.matches]
 

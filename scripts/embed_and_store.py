@@ -37,16 +37,18 @@ if index_name not in pc.list_indexes().names():
 index = pc.Index(index_name)
 
 # Load all JSON files
-chunk_dir = "data/processed_chunks_json"
+# Load from single JSONL file
+jsonl_path = "data/chunked_output.jsonl"
 all_chunks = []
 
-print(f"📦 Reading chunks from: {chunk_dir}")
-for filename in os.listdir(chunk_dir):
-    if filename.endswith(".json"):
-        filepath = os.path.join(chunk_dir, filename)
-        with open(filepath, "r") as f:
-            chunks = json.load(f)
-            all_chunks.extend(chunks)
+print(f"📦 Reading chunks from: {jsonl_path}")
+with open(jsonl_path, "r", encoding="utf-8") as f:
+    for line in f:
+        try:
+            chunk = json.loads(line.strip())
+            all_chunks.append(chunk)
+        except json.JSONDecodeError as e:
+            print(f"⚠️ Skipping malformed line: {e}")
 
 print(f"🔍 Total chunks to process: {len(all_chunks)}")
 
@@ -68,7 +70,7 @@ for i, chunk in enumerate(tqdm(all_chunks, desc="Generating embeddings")):
                 "id": f"chunk-{i}",
                 "values": embedding,
                 "metadata": {
-                    "text": chunk["content"].strip(),
+                    "content": chunk["content"].strip(),
                     "source": chunk.get("source", ""),
                     "section": chunk.get("section", ""),
                     "page": chunk.get("metadata", {}).get("page", 0),

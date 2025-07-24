@@ -6,15 +6,13 @@ from tqdm import tqdm
 from pathlib import Path
 
 RAW_PDF_DIR = Path("data/raw_pdfs")
-OUTPUT_JSON_DIR = Path("data/processed_chunks_json")
-OUTPUT_JSON_DIR.mkdir(parents=True, exist_ok=True)
+OUTPUT_JSONL_FILE = Path("data/chunked_output.jsonl")
+OUTPUT_JSONL_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # Regex patterns
 HEADER_REGEX = re.compile(r"^\d+(\.\d+)*\s+.+")  # e.g., 2.1 Creating a Document
-BULLET_REGEX = re.compile(r"^(\*|-|•|\d+\.)\s+.+")  # Detect bullets
 FOOTER_NOISE = re.compile(r"(Page\s+\d+|Confidential|Company Name)", re.IGNORECASE)
 
-# Known legal/footer boilerplate phrases to remove
 NOISE_PHRASES = [
     "use and copying of any intelinotion software described in this publication requires an applicable software license",
     "intelinotion believes the information in this publication is accurate as of its publication date",
@@ -29,7 +27,6 @@ def is_noise_line(line):
     return any(noise in normalized for noise in NOISE_PHRASES)
 
 def clean_text(text):
-    """Remove empty lines, footer patterns, and known noise phrases."""
     lines = text.splitlines()
     cleaned_lines = []
     for line in lines:
@@ -49,7 +46,6 @@ def chunk_by_section(lines, filename, page):
 
     for line in lines:
         if HEADER_REGEX.match(line):
-            # Save previous chunk
             if current_section["content"]:
                 chunks.append({
                     "source": filename,
@@ -57,11 +53,10 @@ def chunk_by_section(lines, filename, page):
                     "content": "\n".join(current_section["content"]),
                     "metadata": {"page": page, "filename": filename}
                 })
-            current_section = {"section": line, "content": []}
+            current_section = {"section": line.strip(), "content": []}
         else:
-            current_section["content"].append(line)
+            current_section["content"].append(line.strip())
 
-    # Save last chunk
     if current_section["content"]:
         chunks.append({
             "source": filename,
@@ -86,13 +81,13 @@ def process_pdf(pdf_path):
 def main():
     pdf_files = list(RAW_PDF_DIR.glob("*.pdf"))
 
-    for pdf_file in tqdm(pdf_files, desc="Chunking PDFs"):
-        chunks = process_pdf(pdf_file)
-        out_path = OUTPUT_JSON_DIR / f"{pdf_file.stem}_chunks.json"
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(chunks, f, indent=2, ensure_ascii=False)
+    with open(OUTPUT_JSONL_FILE, "w", encoding="utf-8") as f_out:
+        for pdf_file in tqdm(pdf_files, desc="Chunking PDFs"):
+            chunks = process_pdf(pdf_file)
+            for chunk in chunks:
+                f_out.write(json.dumps(chunk, ensure_ascii=False) + "\n")
 
-    print(f"\n✅ Chunking complete. JSON files saved in {OUTPUT_JSON_DIR}")
+    print(f"\n✅ Section-aware chunking complete. Data saved to {OUTPUT_JSONL_FILE}")
 
 if __name__ == "__main__":
     main()

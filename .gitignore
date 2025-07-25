@@ -12,4 +12,4 @@ embeddings/
 data/processed_chunks_json/
 data/chunked_output.jsonl
 # VS Code
-.vscode/
+.vscode/.env

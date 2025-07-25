@@ -1,3 +1,4 @@
+```
 rag-chatbot/
 ├── data/
 │   ├── raw_pdfs/             # Original user guide/manual PDFs
@@ -22,3 +23,4 @@ rag-chatbot/
 ├── requirements.txt          # Python dependencies
 ├── .env                      # API keys (OpenAI, Pinecone, etc.)
 └── README.md                 # Project overview and instructions
+```
